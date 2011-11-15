@@ -1,0 +1,122 @@
+#navigation {
+  width: 240px;
+  margin: 15px;
+  padding: 15px;
+  float: left;
+  background-color: #e0e0e0;
+  border-radius: 10px;
+}
+
+.query {
+  width: 160px;
+}
+
+.servers {
+  margin-top: 1em;
+}
+
+.channels {
+  margin-left: 4ex;
+}
+
+.channel {
+  margin: .25em 0 .25em 0;
+}
+
+.server-link:visited, .channel-link:visited {
+  color: #3f3f3f;
+}
+
+.server-link:hover, .channel-link:hover {
+  color: blue;
+  cursor: pointer;
+}
+
+.server-link, .channel-link {
+  text-decoration: none;
+  color: #3f3f3f;
+  font-size: large;
+}
+
+.server.current .server-link, .channel.current .channel-link {
+  font-weight: bold;
+}
+
+#results {
+  max-width: 630px;
+  margin: 15px;
+  float: left;
+}
+
+.transcript {
+  padding: 1em 0;
+  border-bottom: 1px solid black;
+}
+
+.transcript:last-child {
+  border-bottom: none;
+}
+
+.date, .time, .source-link, .source-link:visited {
+  color: #099;
+  text-decoration: none;
+}
+
+.date:hover, .time:hover, .source-link:hover {
+  color: blue;
+}
+
+.date {
+  margin-top: .5em;
+  font-size: small;
+}
+
+.entries {
+  padding-left: 5px;
+}
+
+.entry:hover {
+  background-color: #e6e6e6;
+}
+
+.entry {
+  width: 619px;
+  overflow: hidden;
+}
+
+.entry.current {
+  background-color: #ffc;
+}
+
+.entry.event-message {
+  padding: .3em 0;
+}
+
+.content {
+  width: 550px;
+  float: left;
+}
+
+.time {
+  font-size: small;
+  float: right;
+}
+
+.event-message .nick {
+  color: #663;
+}
+
+.event-join .nick, .event-join .description,
+.event-part .nick, .event-part .description,
+.event-quit .nick, .event-quit .description,
+.event-kick .nick, .event-kick .description,
+.event-topic .nick, .event-topic .description {
+  font-style: italic;
+  font-size: 90%;
+}
+
+.topic {
+  font-size: medium;
+  font-style: normal;
+  font-weight: bold;
+}
