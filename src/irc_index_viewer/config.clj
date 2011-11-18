@@ -1,4 +1,5 @@
-(ns irc-index-viewer.config)
+(ns irc-index-viewer.config
+  (:require [clj-time.core :as time]))
 
 (def ^:dynamic
      ^{:doc "URL to elasticsearch index."}
@@ -8,13 +9,19 @@
      ^{:doc "Number of transcript documents to retrieve from the index for a 'most recent' or search results page."}
   *transcripts-per-page*)
 
+(def ^:dynamic
+     ^{:doc "On 'most recent' pages, transcripts from a channel will be split/combined such that there is this duration
+             (specified in minutes in the configuration) of inactivity between them."}
+  *transcript-split-threshold*)
+
 (def ^{:doc "The current app-wide configuration."}
   configuration (ref {}))
 
 (def ^:private
   default-configuration
     {:index "http://localhost:9200/irc"
-     :transcripts-per-page 30})
+     :transcripts-per-page 30
+     :transcript-split-threshold 20})
 
 (defn find-and-load-configuration
   "Looks for configuration at a path specified by the system property
@@ -30,7 +37,8 @@
   "Bind the dynamic configuration vars using the current app-wide configuration."
   [& body]
   `(binding [*index* (:index @configuration)
-             *transcripts-per-page* (:transcripts-per-page @configuration)]
+             *transcripts-per-page* (:transcripts-per-page @configuration)
+             *transcript-split-threshold* (time/minutes (:transcript-split-threshold @configuration))]
      ~@body))
 
 (defn wrap-current-configuration

@@ -24,22 +24,46 @@
         channel
         (str "#" channel))))
 
-; TODO: for the 'most recent' page I only want this to combine
-; transcripts within a certain time range of each other
-; To go along with that it'd be nice to split a transcript with
-; containing a large empty time period into multiple transcripts
-(defn- combine-adjacent-transcripts
-  "For simple newest/oldest searches, if we have two transcripts
-   from the same channel right next to each other, we know there
-   are no intervening transcripts, so we can reduce clutter by
-   combining them."
-  [transcripts newest-first]
-  (for [group (partition-by
-                (fn [{:keys [server channel]}] [server channel])
-                transcripts)]
-    (assoc (first group) :entries
-      (apply concat (map :entries
-                         (if newest-first (reverse group) group))))))
+; this function is terrible, i apologize to humanity
+(defn- recombine-transcripts-by-inactivity
+  "Group all adjacent transcripts from the same channel,
+   then split them at periods of inactivity of *trancript-split-threshold*"
+   [transcripts]
+   (let [processed (transient [])]
+     (doseq [group (reverse (partition-by
+                              (fn [{:keys [server channel]}] [server channel])
+                              transcripts))]
+       (loop [[entry & more] (apply concat (map :entries (reverse group)))
+              prev-time nil
+              entries (transient [])]
+         (if-not entry
+                 (conj! processed (assoc (first group) :entries (persistent! entries)))
+                 (if (and prev-time
+                          (time/after? (time/minus (:log_time entry) *transcript-split-threshold*) prev-time))
+                     (do
+                       (conj! processed (assoc (first group) :entries (persistent! entries)))
+                       (recur more (:log_time entry) (transient [entry])))
+                     (do
+                       (conj! entries entry)
+                       (recur more (:log_time entry) entries))))))
+     (reverse (persistent! processed))))
+
+(defn- filter-entries-by-range
+  "Remove entries that fall outside a given clj-time interval.
+   Used for 'display' pages, to hide entries outside the current date."
+  [transcripts interval]
+  (for [transcript transcripts]
+    (assoc transcript :entries
+      (filter #(time/within? interval (:log_time %))
+              (:entries transcript)))))
+
+(defn- combine-all-transcripts
+  "Merge all given transcripts into one. Used for 'display' pages,
+   where we know they're all consecutive, from the same channel, and sorted."
+  [transcripts]
+  [(when-not (empty? transcripts)
+     (assoc (first transcripts) :entries
+       (apply concat (map :entries transcripts))))])
 
 (defn recent-activity-handler
   "Searches for the newest transcripts, optionally restricted by
@@ -51,7 +75,7 @@
                        :from 0
                        :size *transcripts-per-page*
                        :sort :new)
-        transcripts (combine-adjacent-transcripts (:transcripts result) true)]
+        transcripts (recombine-transcripts-by-inactivity (:transcripts result))]
     (html (layout (results-section :transcripts transcripts)
                   :title (recent-activity-title server channel)
                   :servers-channels (servers-channels)
@@ -72,7 +96,8 @@
                                      ;but I don't know if there are adverse effects of merely setting
                                      ;such a high size
                        :log-time-range range)
-        transcripts (combine-adjacent-transcripts (:transcripts result) false)]
+        transcripts (filter-entries-by-range
+                      (combine-all-transcripts (:transcripts result)) range)]
     (html (layout (results-section :transcripts transcripts
                                    :current-date start-date)
                   :title (display-title channel start-date)
