@@ -65,18 +65,35 @@
      (assoc (first transcripts) :entries
        (apply concat (map :entries transcripts))))])
 
+(defn- parse-page
+  "Parse a user-supplied page number to an int, or return 1."
+  [page]
+  (if-not page
+          1
+          (try (Integer/parseInt page)
+            (catch NumberFormatException ex
+              1))))
+
+(defn- page-offset
+  "Translate a 1-based page number to a search offset."
+  [page]
+  (* *transcripts-per-page* (- page 1)))
+
 (defn recent-activity-handler
   "Searches for the newest transcripts, optionally restricted by
    server or server+channel."
-  [req [server raw-channel]]
+  [{{:keys [page] :as params} :params uri :uri} [server raw-channel]]
   (let [channel (normalize-channel raw-channel)
-        result (search :server server
-                       :channel channel
-                       :from 0
-                       :size *transcripts-per-page*
-                       :sort :new)
-        transcripts (recombine-transcripts-by-inactivity (:transcripts result))]
-    (html (layout (results-section :transcripts transcripts)
+        page-num (parse-page page)
+
+        {:keys [transcripts total]}
+          (search :server server
+                  :channel channel
+                  :from (page-offset page-num)
+                  :size *transcripts-per-page*
+                  :sort :new)]
+    (html (layout (results-section :transcripts (recombine-transcripts-by-inactivity transcripts)
+                                   :paging-section (paging-section page-num total uri params))
                   :title (recent-activity-title server channel)
                   :servers-channels (servers-channels)
                   :current-server server
@@ -110,17 +127,21 @@
    :q query
    :server
    :channel (with or without hash)
-   :sort - new, old, or score (default is score)"
-  [{{:keys [q server channel sort]} :params}]
+   :sort - new, old, or score (default is score)
+   :page - 1-indexed"
+  [{{:keys [q server channel sort page] :as params} :params uri :uri}]
   (let [channel (normalize-channel channel)
-        result (search :server server
-                       :channel channel
-                       :query-string q
-                       :sort (keyword (or sort :score))
-                       :from 0
-                       :size *transcripts-per-page*)
-        transcripts (:transcripts result)]
-    (html (layout (results-section :transcripts transcripts)
+        page-num (parse-page page)
+        
+        {:keys [transcripts total]}
+          (search :server server
+                  :channel channel
+                  :query-string q
+                  :sort (keyword (or sort :score))
+                  :from (page-offset page-num)
+                  :size *transcripts-per-page*)]
+    (html (layout (results-section :transcripts transcripts
+                                   :paging-section (paging-section page-num total uri params))
                   :title "IRC Search"
                   :servers-channels (servers-channels)
                   :query q))))

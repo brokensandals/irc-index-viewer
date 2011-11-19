@@ -20,7 +20,7 @@
 (def ^:private
   default-configuration
     {:index "http://localhost:9200/irc"
-     :transcripts-per-page 30
+     :transcripts-per-page 15
      :transcript-split-threshold 20})
 
 (defn find-and-load-configuration

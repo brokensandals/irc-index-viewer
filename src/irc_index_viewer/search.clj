@@ -97,4 +97,6 @@
     (when response
       {:transcripts
         (for [transcript (map :_source (get-in response [:hits :hits]))]
-          (update-in transcript [:entries] parse-entry-times))})))
+          (update-in transcript [:entries] parse-entry-times))
+       :total
+        (get-in response [:hits :total])})))

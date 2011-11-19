@@ -4,6 +4,7 @@
             [clojure.string :as string])
   (:use [hiccup.core :only [escape-html]]
         [hiccup.page-helpers :only [url]]
+        irc-index-viewer.config
         irc-index-viewer.path
         net.cgrand.enlive-html))
 
@@ -72,6 +73,12 @@
     [(time-format/unparse entry-date-formatter (time/date-time year month day))
      group]))
 
+(defn- page-count
+  "Translate a total result count to a page count."
+  [total]
+  (let [adjustment (if (= 0 (mod total *transcripts-per-page*)) 0 1)]
+    (+ adjustment (int (/ total *transcripts-per-page*)))))
+
 (defmacro clone-and-modify-for
   "Like clone-for, but allows modifying the new clone element prior to
    modifying its children."
@@ -127,7 +134,10 @@
   "views/results.html" [:#results]
   ; transcripts: the transcripts to display
   ; current-date: if non-nil, will put ids corresponding to the times (e.g. #t02:34:35) on each entry from that date
-  [& {:keys [transcripts current-date]}]
+  ; paging-section: node to include for paging info (may be nil)
+  [& {:keys [transcripts current-date paging-section]}]
+  [:#paging] (substitute paging-section)
+
   [:.transcript]
     (clone-for [{:keys [server channel entries]} transcripts]
       [:.source-link] (set-attr :href (channel-path server channel))
@@ -153,3 +163,28 @@
 
               [:.nick] (content nick)
               [:.description] (html-content description)))))
+
+(defsnippet paging-section-snippet
+  "views/results.html" [:#paging]
+  [& {:keys [omitted-prev omitted-next current pages uri params]}]
+
+  [:.omitted-prev] (when omitted-prev identity)
+  [:.omitted-next] (when omitted-next identity)
+
+  [:.page]
+    (clone-and-modify-for [page pages]
+      (add-class (when (= current page) "current"))
+      [:a] (do-> (content (str page))
+                 (set-attr :href (url uri (assoc params :page page))))))
+
+(defn paging-section
+  [current total-results uri params]
+  (let [total-pages (page-count total-results)
+        start-page (max 1 (- current 4))
+        stop-page (min total-pages (+ start-page 9))]
+    (paging-section-snippet :omitted-prev (> start-page 1)
+                            :omitted-next (< stop-page total-pages)
+                            :current current
+                            :pages (range start-page (+ stop-page 1))
+                            :uri uri
+                            :params params)))
