@@ -121,6 +121,16 @@
   font-weight: bold;
 }
 
+#adjacent-dates {
+  margin-top: 1em;
+  text-align: center;
+}
+
+#adjacent-dates a, #adjacent-dates a:visited {
+  color: #099;
+  text-decoration: none;
+}
+
 #paging {
   margin-top: 1em;
 }

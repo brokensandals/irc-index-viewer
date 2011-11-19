@@ -130,13 +130,25 @@
   
   [:#main-section] (substitute main-section))
 
+(defsnippet adjacent-dates-section
+  "views/results.html" [:#adjacent-dates]
+  [server channel prev next]
+  [:.prev-date] (do-> (content (str "<< "
+                                    (time-format/unparse title-date-formatter prev)))
+                      (set-attr :href (date-path server channel prev)))
+  [:.next-date] (do-> (content (str (time-format/unparse title-date-formatter next)
+                                    " >>"))
+                      (set-attr :href (date-path server channel next))))
+
 (defsnippet results-section
   "views/results.html" [:#results]
   ; transcripts: the transcripts to display
   ; current-date: if non-nil, will put ids corresponding to the times (e.g. #t02:34:35) on each entry from that date
   ; paging-section: node to include for paging info (may be nil)
-  [& {:keys [transcripts current-date paging-section]}]
+  [& {:keys [transcripts current-date paging-section adjacent-dates-section]}]
   [:#paging] (substitute paging-section)
+
+  [:#adjacent-dates] (substitute adjacent-dates-section)
 
   [:.transcript]
     (clone-for [{:keys [server channel entries]} transcripts]

@@ -61,9 +61,10 @@
   "Merge all given transcripts into one. Used for 'display' pages,
    where we know they're all consecutive, from the same channel, and sorted."
   [transcripts]
-  [(when-not (empty? transcripts)
-     (assoc (first transcripts) :entries
-       (apply concat (map :entries transcripts))))])
+  (if (empty? transcripts)
+      []
+      [(assoc (first transcripts) :entries
+         (apply concat (map :entries transcripts)))]))
 
 (defn- parse-page
   "Parse a user-supplied page number to an int, or return 1."
@@ -116,7 +117,13 @@
         transcripts (filter-entries-by-range
                       (combine-all-transcripts (:transcripts result)) range)]
     (html (layout (results-section :transcripts transcripts
-                                   :current-date start-date)
+                                   :current-date start-date
+
+                                   :adjacent-dates-section
+                                    (adjacent-dates-section server
+                                                            channel
+                                                            (time/minus start-date (time/days 1))
+                                                            (time/plus start-date (time/days 1))))
                   :title (display-title channel start-date)
                   :servers-channels (servers-channels)
                   :current-server server
