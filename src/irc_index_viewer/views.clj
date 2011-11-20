@@ -12,27 +12,48 @@
 (def entry-date-formatter (time-format/formatter "MMMM d, yyyy"))
 (def title-date-formatter (time-format/formatter "yyyy-MM-dd"))
 
+; From John Gruber's http://daringfireball.net/2010/07/improved_regex_for_matching_urls
+; Added a capture group around the protocol so we can distinguish matches that contained it.
+(def url-regex #"(?i)\b((?:([a-z][\w-]+:(?:/{1,3}|[a-z0-9%]))|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))")
+
 (defn- insert-time
   "Add :time key, containing displayable time, to an entry."
   [entry]
   (assoc entry :time (time-format/unparse entry-time-formatter (:log_time entry))))
 
+(defn linkify-urls
+  "Add A tags around parts of the string that look likely to be URLs."
+  [text]
+  (let [matcher (re-matcher url-regex text)]
+    (if-not (.find matcher)
+            text ; avoid building a StringBuffer (and presumably copying the string) if there were no matches
+            (let [result (StringBuffer.)]
+              (loop []
+                (if (.group matcher 2)
+                    (.appendReplacement matcher result "<a class=\"detected-link\" href=\"$1\">$1</a>")
+                    ; If there was no protocol, we need to add one so the browser won't treat this as a relative link.
+                    (.appendReplacement matcher result "<a class=\"detected-link\" href=\"http://$1\">$1</a>"))
+                (if (.find matcher)
+                    (recur)
+                    (.toString (.appendTail matcher result))))))))
+
 (defn- insert-description
   "Add :description key, containing displayable text of the entry (excluding nick) as HTML."
   [{:keys [event message] :as entry}]
-  (assoc entry :description
-    (case event
-      "message" (escape-html message)
-      "join" "joined"
-      "part" (if (string/blank? message)
-                 "left"
-                 (str "left - " (escape-html message)))
-      "quit" (if (string/blank? message)
-                 "quit"
-                 (str "quit - " (escape-html message)))
-      "kick" (str "kicked " (escape-html message))
-      "topic" (str "changed the topic - <span class=\"topic\">"
-                   (escape-html message) "</span>"))))
+  (let [displayable (linkify-urls (escape-html message))]
+    (assoc entry :description
+      (case event
+        "message" displayable
+        "join" "joined"
+        "part" (if (string/blank? displayable)
+                   "left"
+                   (str "left - " displayable))
+        "quit" (if (string/blank? displayable)
+                   "quit"
+                   (str "quit - " displayable))
+        "kick" (str "kicked " displayable)
+        "topic" (str "changed the topic - <span class=\"topic\">"
+                     displayable "</span>")))))
 
 (defn- insert-element-id
   "Add an :element-id key to the entry, unless the previous entry occurred
