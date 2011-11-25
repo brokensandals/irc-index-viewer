@@ -182,15 +182,27 @@
                                     " >>"))
                       (set-attr :href (date-path server channel next))))
 
+(defsnippet sort-section
+  "views/results.html" [:#sorts]
+  [current uri params]
+  [:.sort] (clone-and-modify-for [[code display] [[:score "best"] [:new "new"] [:old "old"]]]
+             (add-class (when (= current code) "current"))
+             [:a] (do-> (set-attr :href (url uri (merge params {:page 1 :sort code})))
+                        (content display))))
+
 (defsnippet results-section
   "views/results.html" [:#results]
   ; transcripts: the transcripts to display
   ; current-date: if non-nil, will put ids corresponding to the times (e.g. #t02:34:35) on each entry from that date
   ; paging-section: node to include for paging info (may be nil)
-  [& {:keys [transcripts current-date paging-section adjacent-dates-section]}]
+  ; adjacent-dates-section: node to include for prev/next date links (may be nil)
+  ; sort-section: node to include for sort selection links (may be nil)
+  [& {:keys [transcripts current-date paging-section adjacent-dates-section sort-section]}]
   [:#paging] (substitute paging-section)
 
   [:#adjacent-dates] (substitute adjacent-dates-section)
+
+  [:#sorts] (substitute sort-section)
 
   [:.transcript]
     (clone-for [{:keys [server channel entries]} transcripts]

@@ -140,27 +140,34 @@
   margin-top: 1em;
 }
 
-.pages {
+#sorts, .pages {
   text-align: center;
 }
 
-.pages li {
+.sort, .pages li {
   display: inline;
 }
 
-.page a {
+.sort a, .page a {
   color: black;
   border-radius: 5px;
   margin: 1px;
-  padding: 10px;
   text-decoration: none;
   background-color: #e0e0e0;
 }
 
-.page a:visited {
+.sort a {
+  padding: 5px 10px;
+}
+
+.page a {
+  padding: 10px;
+}
+
+.sort a, .page a:visited {
   color: black;
 }
 
-.page.current a, .page.current a:visited {
+.sort.current a, .sort.current a:visited, .page.current a, .page.current a:visited {
   font-weight: bold;
 }

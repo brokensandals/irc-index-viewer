@@ -139,17 +139,19 @@
   [{{:keys [q server channel sort page] :as params} :params uri :uri}]
   (let [channel (normalize-channel channel)
         page-num (parse-page page)
+        sort-code (keyword (or sort :score))
         
         {:keys [transcripts total]}
           (search :server server
                   :channel channel
                   :query-string q
-                  :sort (keyword (or sort :score))
+                  :sort sort-code
                   :from (page-offset page-num)
                   :size *transcripts-per-page*
                   :highlight true)]
     (html (layout (results-section :transcripts transcripts
-                                   :paging-section (paging-section page-num total uri params))
+                                   :paging-section (paging-section page-num total uri params)
+                                   :sort-section (sort-section sort-code uri params))
                   :title "IRC Search"
                   :servers-channels (servers-channels)
                   :query q))))
