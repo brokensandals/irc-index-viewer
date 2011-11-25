@@ -70,8 +70,36 @@
     (assoc entry :log_time
       (time-format/parse log-time-formatter (:log_time entry)))))
 
+; The whole highlighting process is really inefficient, and inexact.
+; - The search service doesn't seem to indicate which value from a multi-value field is
+;   being highlighted (fast-vector-highlighter even combines different values into a single
+;   fragment string). This prevents me from using the highlighter's output directly in the view.
+;   Instead, we just take all the strings that it highlighted, and then highlight all occurrences
+;   of those strings at word boundaries (as defined by the regex \b).
+;
+;   This could be made more precise, and more efficient (only process each entry at most once, rather than
+;   once per highlighted string), by going through the highlights in order, using a character on either side
+;   of the highlight for context, and (since the fragments are in order) only checking against entries / parts
+;   of entries that haven't been matched by a previous highlight. But the code gets more complex and I don't care enough right now.
+;
+; - If the original text contains '<em>...</em>' it will be treated as a highlight.
+;   Fully solving this would require either having elasticsearch do the HTML-escaping
+;   (don't think that's possible currently) or doing it prior to indexing, or
+;   comparing the fragments against the original string and ignoring any preexisting <em>'s.
+(defn- parse-highlights
+  "Find all the highlighted strings in the fragments returned by the query, and
+   store a list of them in the :highlights key of each entry."
+  [entries {message-fragments :message}]
+  (if-not message-fragments
+    entries
+    (let [highlights (distinct
+                       (map second
+                         (re-seq #"<em>(.+?)</em>" (string/join message-fragments))))]
+      (for [entry entries]
+        (assoc entry :highlights highlights)))))
+
 (defn search
-  [& {:keys [query-string server channel sort from size log-time-range]}]\
+  [& {:keys [query-string server channel sort from size log-time-range highlight]}]
   (let [query-spec (if-not (string/blank? query-string)
                            {:query_string {:query query-string}}
                            {:match_all {}})
@@ -93,10 +121,15 @@
                :from from
                :size size
                :sort (sort-spec sort)}
-        response (perform-query query)]
+        with-highlight (if-not highlight
+                               query
+                               (assoc query :highlight
+                                 {:fields {:message {}}}))
+        response (perform-query with-highlight)]
     (when response
       {:transcripts
-        (for [transcript (map :_source (get-in response [:hits :hits]))]
-          (update-in transcript [:entries] parse-entry-times))
+        (for [{:keys [_source highlight]} (get-in response [:hits :hits])]
+          (update-in _source [:entries]
+            (comp parse-entry-times #(parse-highlights % highlight))))
        :total
         (get-in response [:hits :total])})))

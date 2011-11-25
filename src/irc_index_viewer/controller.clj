@@ -146,7 +146,8 @@
                   :query-string q
                   :sort (keyword (or sort :score))
                   :from (page-offset page-num)
-                  :size *transcripts-per-page*)]
+                  :size *transcripts-per-page*
+                  :highlight true)]
     (html (layout (results-section :transcripts transcripts
                                    :paging-section (paging-section page-num total uri params))
                   :title "IRC Search"

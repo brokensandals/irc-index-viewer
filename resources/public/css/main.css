@@ -115,6 +115,11 @@
   font-size: 90%;
 }
 
+.highlight {
+  font-weight: bold;
+  background-color: yellow;
+}
+
 .topic {
   font-size: medium;
   font-style: normal;

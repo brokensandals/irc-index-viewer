@@ -1,4 +1,5 @@
 (ns irc-index-viewer.views
+  (:import [java.util.regex Pattern])
   (:require [clj-time.core :as time]
             [clj-time.format :as time-format]
             [clojure.string :as string])
@@ -37,10 +38,30 @@
                     (recur)
                     (.toString (.appendTail matcher result))))))))
 
+;FIXME: memoize this (but with limited cache) so that we aren't compiling hundreds of regexes for a request
+(defn highlight-pattern
+  "Returns a Pattern that will match the given string, HTML-escaped, on a word boundary."
+  [highlight]
+  (Pattern/compile
+    (str "\\b" (Pattern/quote (escape-html highlight)) "\\b")))
+
+;FIXME: if one highlight string contains another (e.g. "foo of bar" and "bar")
+;       this may nest highlights (e.g. "<em>foo of <em>bar</em></em>")
+; Also, the fact that highlights are replaced after HTML-escaping might be mildly problematic
+; if the escaping changes word boundaries
+; AND, URLs won't be detected if parts of them are highlighted...
+(defn- escape-and-highlight
+  "HTML-escape the given message, and add <em> tags around each occurrence of
+   a member of highlights at a word boundary."
+  [message highlights]
+  (reduce #(string/replace %1 (highlight-pattern %2) "<em class=\"highlight\">$0</em>")
+          (escape-html message)
+          highlights))
+
 (defn- insert-description
   "Add :description key, containing displayable text of the entry (excluding nick) as HTML."
-  [{:keys [event message] :as entry}]
-  (let [displayable (linkify-urls (escape-html message))]
+  [{:keys [event message highlights] :as entry}]
+  (let [displayable (linkify-urls (escape-and-highlight message highlights))]
     (assoc entry :description
       (case event
         "message" displayable
